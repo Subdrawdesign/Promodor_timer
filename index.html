@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Focus Flow — Pomodoro Timer</title>
+  <meta name="theme-color" content="#111111">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css?v=1">
+</head>
+<body class="page-timer">
+
+  <header class="topbar">
+    <a class="brand" href="./"><span class="brand-dot"></span>Focus Flow</a>
+    <nav class="nav">
+      <a href="./" class="active">Timer</a>
+      <a href="analytics/">Analytics</a>
+    </nav>
+    <div class="top-actions">
+      <span class="sync-pill" id="syncPill" title="Sync status"><i></i><b>…</b></span>
+      <button class="icon-btn" id="muteBtn" title="Sound on/off (M)" aria-label="Toggle sound">🔊</button>
+      <button class="icon-btn" id="settingsBtn" title="Settings" aria-label="Settings">⚙</button>
+    </div>
+  </header>
+
+  <main class="timer-layout">
+
+    <!-- ===================== TIMER CARD ===================== -->
+    <section class="container card-timer" id="timerCard" data-mode="focus">
+      <div class="mode" role="tablist">
+        <button data-mode-button="focus" class="active" role="tab">Pomodoro</button>
+        <button data-mode-button="short" role="tab">Short Break</button>
+        <button data-mode-button="long" role="tab">Long Break</button>
+        <button data-mode-button="flow" role="tab" title="Open-ended stopwatch — track hours without a fixed length">Flow ⏱</button>
+      </div>
+
+      <div class="ring-wrap">
+        <svg class="ring" viewBox="0 0 300 300" aria-hidden="true">
+          <circle class="ring-track" cx="150" cy="150" r="136"></circle>
+          <circle class="ring-bar" id="ringBar" cx="150" cy="150" r="136"></circle>
+        </svg>
+        <div class="ring-center">
+          <div class="phase-label" id="phaseLabel">Focus</div>
+          <button class="timer-display" id="timeDisplay" title="Click to set a custom time">25:00</button>
+          <div class="sub-label" id="subLabel">Session 1 of 4</div>
+        </div>
+      </div>
+
+      <button class="current-task" id="taskChip" title="Change task (T)">
+        <span class="task-dot"></span>
+        <span id="taskText">No task — click to add one</span>
+        <span class="proj-tag" id="projText"></span>
+      </button>
+
+      <div class="controls">
+        <button id="reset" class="ctl-secondary" title="Reset (R)">↺ <span>Reset</span></button>
+        <button id="start" title="Start / Pause (Space)">Start</button>
+        <button id="skip" class="ctl-secondary" title="Skip to next (S)"><span>Skip</span> ⏭</button>
+      </div>
+
+      <div class="cycle-dots" id="cycleDots" aria-label="Pomodoros in this cycle"></div>
+    </section>
+
+    <!-- ===================== TODAY PANEL ===================== -->
+    <aside class="panel today-panel">
+      <div class="panel-head">
+        <h2>Today</h2>
+        <a class="link-btn" href="analytics/">Full analytics →</a>
+      </div>
+
+      <div class="goal">
+        <div class="goal-top">
+          <span><b id="todayFocus">0m</b> focused</span>
+          <span class="muted">goal <span id="goalText">3h</span></span>
+        </div>
+        <div class="goal-bar"><div id="goalFill"></div></div>
+      </div>
+
+      <div class="mini-stats">
+        <div><b id="todaySessions">0</b><span>sessions</span></div>
+        <div><b id="streakVal">0</b><span>day streak 🔥</span></div>
+        <div><b id="weekFocus">0h</b><span>this week</span></div>
+      </div>
+
+      <div class="mini-heat" id="miniHeat" aria-label="Last 12 weeks"></div>
+
+      <h3 class="list-title">Sessions</h3>
+      <ul class="session-list" id="todayList">
+        <li class="empty">Nothing tracked yet today. Hit Start 🚀</li>
+      </ul>
+    </aside>
+  </main>
+
+  <footer class="shortcuts">
+    <span><kbd>Space</kbd> start/pause</span>
+    <span><kbd>R</kbd> reset</span>
+    <span><kbd>S</kbd> skip</span>
+    <span><kbd>1</kbd>–<kbd>4</kbd> modes</span>
+    <span><kbd>T</kbd> task</span>
+    <span><kbd>M</kbd> mute</span>
+  </footer>
+
+  <!-- ===================== TASK MODAL ===================== -->
+  <div class="custom-modal" id="taskModal" hidden>
+    <div class="modal-content">
+      <h2>What are you working on?</h2>
+      <label class="field"><span>Task</span>
+        <input type="text" id="taskInput" list="taskList" placeholder="e.g. Approval flow API" maxlength="300" autocomplete="off">
+      </label>
+      <label class="field"><span>Project / tag</span>
+        <input type="text" id="projectInput" list="projectList" placeholder="e.g. TDF Payments" maxlength="80" autocomplete="off">
+      </label>
+      <datalist id="taskList"></datalist>
+      <datalist id="projectList"></datalist>
+      <div class="chip-row" id="recentProjects"></div>
+      <div class="modal-buttons">
+        <button id="skipTask" class="btn-ghost">Skip</button>
+        <button id="confirmTask" class="btn-primary">Start focus</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== CUSTOM TIME MODAL ===================== -->
+  <div class="custom-modal" id="timeModal" hidden>
+    <div class="modal-content">
+      <h2>Set custom time</h2>
+      <p class="muted small">Only for this <b id="timeModeName">session</b>. Defaults live in ⚙ Settings.</p>
+      <div class="time-inputs">
+        <label class="field"><span>Minutes</span><input type="number" id="customMin" min="0" max="600" value="25"></label>
+        <label class="field"><span>Seconds</span><input type="number" id="customSec" min="0" max="59" value="0"></label>
+      </div>
+      <div class="chip-row">
+        <button class="chip" data-preset="10">10m</button>
+        <button class="chip" data-preset="20">20m</button>
+        <button class="chip" data-preset="45">45m</button>
+        <button class="chip" data-preset="50">50m</button>
+        <button class="chip" data-preset="90">90m</button>
+      </div>
+      <div class="modal-buttons">
+        <button id="cancelTime" class="btn-ghost">Cancel</button>
+        <button id="confirmTime" class="btn-primary">Set</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== SETTINGS MODAL ===================== -->
+  <div class="custom-modal" id="settingsModal" hidden>
+    <div class="modal-content wide">
+      <h2>Settings</h2>
+      <form id="settingsForm" class="settings-grid">
+        <fieldset>
+          <legend>Durations (minutes)</legend>
+          <label class="field"><span>Pomodoro</span><input type="number" name="focusMin" min="1" max="600"></label>
+          <label class="field"><span>Short break</span><input type="number" name="shortMin" min="1" max="120"></label>
+          <label class="field"><span>Long break</span><input type="number" name="longMin" min="1" max="240"></label>
+          <label class="field"><span>Long break every</span><input type="number" name="longEvery" min="2" max="12"></label>
+          <label class="field"><span>Daily goal (min)</span><input type="number" name="dailyGoalMin" min="10" max="1440"></label>
+          <label class="field"><span>Min. length to save (sec)</span><input type="number" name="minLogSec" min="0" max="3600"></label>
+        </fieldset>
+        <fieldset>
+          <legend>Behaviour</legend>
+          <label class="switch"><input type="checkbox" name="autoStartBreaks"><span>Auto-start breaks</span></label>
+          <label class="switch"><input type="checkbox" name="autoStartFocus"><span>Auto-start next pomodoro</span></label>
+          <label class="switch"><input type="checkbox" name="askTask"><span>Ask for task before focus</span></label>
+          <label class="switch"><input type="checkbox" name="notifications"><span>Desktop notifications</span></label>
+        </fieldset>
+        <fieldset>
+          <legend>Sound</legend>
+          <label class="switch"><input type="checkbox" name="sound"><span>Sounds (start / stop / done)</span></label>
+          <label class="switch"><input type="checkbox" name="tick"><span>Soft tick every second</span></label>
+          <label class="switch"><input type="checkbox" name="hourlyChime"><span>Hourly chime in Flow mode</span></label>
+          <label class="field"><span>Volume</span><input type="range" name="volume" min="0" max="1" step="0.05"></label>
+          <div class="chip-row">
+            <button type="button" class="chip" data-test-sound="start">▶ start</button>
+            <button type="button" class="chip" data-test-sound="stop">■ stop</button>
+            <button type="button" class="chip" data-test-sound="complete">✓ done</button>
+            <button type="button" class="chip" data-test-sound="hourly">⏰ hourly</button>
+          </div>
+        </fieldset>
+      </form>
+      <p class="muted small" id="dbInfo"></p>
+      <div class="modal-buttons">
+        <button id="cancelSettings" class="btn-ghost">Cancel</button>
+        <button id="saveSettings" class="btn-primary">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toasts"></div>
+
+
+  <script src="js/config.js?v=1"></script>
+  <script src="js/api.js?v=1"></script>
+  <script src="js/sound.js?v=1"></script>
+  <script src="js/app.js?v=1"></script>
+</body>
+</html>

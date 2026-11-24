@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Analytics — Focus Flow</title>
+  <meta name="theme-color" content="#111111">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/styles.css?v=1">
+</head>
+<body class="page-analytics">
+
+  <header class="topbar">
+    <a class="brand" href="../"><span class="brand-dot"></span>Focus Flow</a>
+    <nav class="nav">
+      <a href="../">Timer</a>
+      <a href="./" class="active">Analytics</a>
+    </nav>
+    <div class="top-actions">
+      <span class="sync-pill" id="syncPill"><i></i><b>…</b></span>
+      <a class="icon-btn" id="sheetBtn" href="#" target="_blank" rel="noopener" title="Open Google Sheet" hidden>📄</a>
+    </div>
+  </header>
+
+  <main class="an-wrap">
+    <div class="an-head">
+      <h1>Analytics</h1>
+      <div class="filters">
+        <div class="seg" id="rangeSeg">
+          <button data-range="7">7D</button>
+          <button data-range="30" class="active">30D</button>
+          <button data-range="90">90D</button>
+          <button data-range="365">1Y</button>
+          <button data-range="all">All</button>
+          <button data-range="custom">Custom</button>
+        </div>
+        <span id="customRange" hidden>
+          <input type="date" id="fromDate"> – <input type="date" id="toDate">
+        </span>
+        <select id="projectFilter" title="Project"><option value="">All projects</option></select>
+        <select id="modeFilter" title="What to count">
+          <option value="focus">Focus + Flow</option>
+          <option value="focusOnly">Pomodoro only</option>
+          <option value="flowOnly">Flow only</option>
+          <option value="break">Breaks only</option>
+        </select>
+        <button class="btn" id="refreshBtn" title="Reload from the sheet">↻ Refresh</button>
+        <button class="btn" id="csvBtn" title="Download the filtered sessions">⬇ CSV</button>
+      </div>
+    </div>
+
+    <div id="loading" class="loading-bar"></div>
+
+    <div id="emptyState" class="card empty-state" hidden>
+      <h3>No sessions yet</h3>
+      <p>Finish a pomodoro on the <a href="../">timer</a> and it shows up here.</p>
+      <button class="btn-primary" id="demoBtn" hidden>Load 6 months of demo data</button>
+    </div>
+
+    <div id="dash">
+      <!-- KPIs -->
+      <section class="kpis" id="kpis"></section>
+
+      <!-- TIME SERIES -->
+      <section class="card">
+        <div class="card-head">
+          <h2>Focus time over time</h2>
+          <span class="hint" id="tsHint">hours per day · stacked by project · scroll / drag to zoom</span>
+          <div class="right">
+            <div class="seg" id="granSeg">
+              <button data-gran="day" class="active">Day</button>
+              <button data-gran="week">Week</button>
+              <button data-gran="month">Month</button>
+            </div>
+            <button class="btn" id="resetZoom" title="Reset zoom">⤢</button>
+          </div>
+        </div>
+        <div class="chart-box"><canvas id="tsChart" aria-label="Focus hours over time"></canvas></div>
+      </section>
+
+      <!-- HEATMAP -->
+      <section class="card">
+        <div class="card-head">
+          <h2>Daily focus heatmap</h2>
+          <span class="hint" id="heatSummary"></span>
+          <div class="right">
+            <select id="heatYear" class="input" style="width:auto;padding:.4rem .6rem;font-size:.85rem"></select>
+          </div>
+        </div>
+        <div class="heat-scroll"><div class="heatmap" id="heatmap"></div></div>
+        <div class="heat-foot">
+          <span id="heatLegendText">Colour = focus time vs your daily goal</span>
+          <span class="legend-scale">Less <i class="lv0"></i><i class="lv1"></i><i class="lv2"></i><i class="lv3"></i><i class="lv4"></i> More</span>
+        </div>
+      </section>
+
+      <!-- DAY DETAIL -->
+      <section class="card" id="dayCard">
+        <div class="card-head">
+          <h2>Day timeline</h2>
+          <div class="right">
+            <button class="btn" id="dayPrev">←</button>
+            <input type="date" id="dayPick" class="input" style="width:auto;padding:.4rem .6rem;font-size:.85rem">
+            <button class="btn" id="dayNext">→</button>
+            <button class="btn" id="dayToday">Today</button>
+          </div>
+        </div>
+        <div class="day-head" id="dayHead"></div>
+        <div class="timeline" id="timeline"></div>
+        <div class="tl-axis" id="tlAxis"></div>
+        <div class="legend">
+          <span><i style="background:rgb(255,0,55)"></i>Pomodoro</span>
+          <span><i style="background:rgb(169,112,255)"></i>Flow</span>
+          <span><i style="background:rgb(0,255,205)"></i>Short break</span>
+          <span><i style="background:rgb(0,140,255)"></i>Long break</span>
+        </div>
+        <ul class="session-list day-list" id="dayList"></ul>
+      </section>
+
+      <!-- DISTRIBUTIONS -->
+      <section class="grid-2b">
+        <div class="card">
+          <div class="card-head"><h2>When you focus</h2><span class="hint">total hours by hour of day</span></div>
+          <div class="chart-box sm"><canvas id="hourChart" aria-label="Focus by hour of day"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h2>Weekday pattern</h2><span class="hint">average hours per weekday</span></div>
+          <div class="chart-box sm"><canvas id="weekdayChart" aria-label="Average focus per weekday"></canvas></div>
+        </div>
+      </section>
+
+      <section class="grid-2b">
+        <div class="card">
+          <div class="card-head"><h2>Projects</h2><span class="hint" id="projHint"></span></div>
+          <div class="bars" id="projectBars"></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h2>Top tasks</h2><span class="hint">by focus time</span></div>
+          <div class="bars" id="taskBars"></div>
+        </div>
+      </section>
+
+      <!-- TABLE -->
+      <section class="card">
+        <div class="card-head">
+          <h2>All sessions</h2>
+          <span class="hint" id="tableHint"></span>
+          <div class="right">
+            <input type="search" id="tableSearch" class="input" placeholder="Search task / project…" style="width:220px;padding:.45rem .7rem;font-size:.85rem">
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="sessions">
+            <thead>
+              <tr>
+                <th data-sort="startTime">Start ↓</th>
+                <th data-sort="mode">Mode</th>
+                <th data-sort="task">Task</th>
+                <th data-sort="project">Project</th>
+                <th data-sort="durationSec" class="num">Duration</th>
+                <th data-sort="completed">Done</th>
+                <th data-sort="pauses" class="num">Pauses</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <div id="toasts"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+  <script src="../js/config.js?v=1"></script>
+  <script src="../js/api.js?v=1"></script>
+  <script src="../js/analytics.js?v=1"></script>
+</body>
+</html>
